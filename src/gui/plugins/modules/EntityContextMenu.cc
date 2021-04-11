@@ -50,6 +50,9 @@ namespace ignition::gazebo
     /// \brief View collisions service name
     public: std::string viewCollisionsService;
 
+    /// \brief View transparent service name
+    public: std::string viewTransparentService;
+
     /// \brief Name of world.
     public: std::string worldName;
   };
@@ -81,6 +84,9 @@ EntityContextMenu::EntityContextMenu()
 
   // For view collisions service requests
   this->dataPtr->viewCollisionsService = "/gui/view/collisions";
+
+  // For view transparent service requests
+  this->dataPtr->viewTransparentService = "/gui/view/transparent";
 }
 
 /////////////////////////////////////////////////
@@ -157,6 +163,12 @@ void EntityContextMenu::OnRequest(const QString &_request, const QString &_data)
     ignition::msgs::StringMsg req;
     req.set_data(_data.toStdString());
     this->dataPtr->node.Request(this->dataPtr->viewCollisionsService, req, cb);
+  }
+  else if (request == "view_transparent")
+  {
+    ignition::msgs::StringMsg req;
+    req.set_data(_data.toStdString());
+    this->dataPtr->node.Request(this->dataPtr->viewTransparentService, req, cb);
   }
   else
   {

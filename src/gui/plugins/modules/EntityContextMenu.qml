@@ -71,6 +71,14 @@ Item {
         context.OnRequest("view_collisions", context.entity)
       }
     }
+    MenuItem {
+      id: viewTransparentMenu
+      text: "Transparent"
+      onTriggered: {
+        menu.close()
+        context.OnRequest("view_transparent", context.entity)
+      }
+    }
   }
 
   function open(_entity, _type, _x, _y) {

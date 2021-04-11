@@ -19,6 +19,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -323,6 +324,12 @@ class ignition::gazebo::RenderUtilPrivate
   /// \brief A map of created collision entities and if they are currently
   /// visible
   public: std::map<Entity, bool> viewingCollisions;
+
+  /// \brief A map of link entities and their corresponding children visual
+  public: std::map<Entity, std::vector<Entity>> linkToVisualEntities;
+
+  /// \brief A set of visual entities that have been set to transparent
+  public: std::unordered_set<Entity> viewingTransparent;
 
   /// \brief A map of entity id to thermal camera sensor configuration
   /// properties. The elements in the tuple are:
@@ -1240,6 +1247,7 @@ void RenderUtilPrivate::CreateRenderingEntities(
 
           this->newVisuals.push_back(
               std::make_tuple(_entity, visual, _parent->Data()));
+          this->linkToVisualEntities[_parent->Data()].push_back(_entity);
           return true;
         });
 
@@ -1468,6 +1476,7 @@ void RenderUtilPrivate::CreateRenderingEntities(
 
           this->newVisuals.push_back(
               std::make_tuple(_entity, visual, _parent->Data()));
+          this->linkToVisualEntities[_parent->Data()].push_back(_entity);
           return true;
         });
 
@@ -1751,6 +1760,7 @@ void RenderUtilPrivate::RemoveRenderingEntities(
       [&](const Entity &_entity, const components::Visual *)->bool
       {
         this->removeEntities[_entity] = _info.iterations;
+        this->linkToVisualEntities.erase(_entity);
         return true;
       });
 
@@ -2175,5 +2185,48 @@ void RenderUtil::ViewCollisions(const Entity &_entity)
           visParent->SetVisible(false);
       }
     }
+  }
+}
+
+/////////////////////////////////////////////////
+void RenderUtil::ViewTransparent(const Entity &_entity)
+{
+  std::vector<Entity> visualEntities;
+  if (this->dataPtr->linkToVisualEntities.find(_entity) !=
+      this->dataPtr->linkToVisualEntities.end())
+  {
+    visualEntities = this->dataPtr->linkToVisualEntities[_entity];
+  }
+  else if (this->dataPtr->modelToLinkEntities.find(_entity) !=
+           this->dataPtr->modelToLinkEntities.end())
+  {
+    std::vector<Entity> links = this->dataPtr->modelToLinkEntities[_entity];
+    for (const auto &link : links)
+      visualEntities.insert(visualEntities.end(),
+          this->dataPtr->linkToVisualEntities[link].begin(),
+          this->dataPtr->linkToVisualEntities[link].end());
+  }
+
+  for (const auto &visualEntity : visualEntities)
+  {
+    rendering::VisualPtr visual =
+        this->dataPtr->sceneManager.VisualById(visualEntity);
+    if (visual == nullptr)
+    {
+      ignerr << "Could not find visual for entity [" << visualEntity
+             << "]" << std::endl;
+      continue;
+    }
+
+    if (this->dataPtr->viewingTransparent.find(visualEntity) !=
+        this->dataPtr->viewingTransparent.end())
+    {
+      visual->SetVisible(true);
+      this->dataPtr->viewingTransparent.erase(visualEntity);
+      continue;
+    }
+
+    visual->SetVisible(false);
+    this->dataPtr->viewingTransparent.insert(visualEntity);
   }
 }
