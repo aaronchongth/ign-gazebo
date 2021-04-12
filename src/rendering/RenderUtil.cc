@@ -2219,45 +2219,31 @@ void RenderUtil::ViewTransparent(const Entity &_entity)
       continue;
     }
 
-    if (!this->dataPtr->scene->MaterialRegistered("transparency_on"))
+    bool is_transparent =
+        this->dataPtr->viewingTransparent.find(visualEntity) !=
+        this->dataPtr->viewingTransparent.end();
+
+    for (unsigned int i = 0; i < visual->GeometryCount(); ++i)
     {
-      auto material =
-        this->dataPtr->scene->CreateMaterial("transparency_on");
-      math::Color default_values(0.0f, 0.0f, 0.0f, 1.0f);
-      material->SetAmbient(default_values);
-      material->SetDiffuse(default_values);
-      material->SetSpecular(default_values);
-      material->SetEmissive(default_values);
-      material->SetTransparency(0.7);
-    }
-    if (!this->dataPtr->scene->MaterialRegistered("transparency_off"))
-    {
-      auto material =
-        this->dataPtr->scene->CreateMaterial("transparency_off");
-      math::Color default_values(0.0f, 0.0f, 0.0f, 1.0f);
-      material->SetAmbient(default_values);
-      material->SetDiffuse(default_values);
-      material->SetSpecular(default_values);
-      material->SetEmissive(default_values);
-      material->SetTransparency(0.0);
+      auto mesh = std::dynamic_pointer_cast<rendering::Mesh>(
+          visual->GeometryByIndex(i));
+      for (unsigned int j = 0; j < mesh->SubMeshCount(); ++j)
+      {
+        auto submesh = mesh->SubMeshByIndex(j);
+        auto submeshMat = submesh->Material();
+        if (submeshMat)
+        {
+          if (is_transparent)
+            submeshMat->SetTransparency(0.0);
+          else
+            submeshMat->SetTransparency(0.7);
+        }
+      }
     }
 
-    auto material = visual->Material();
-    if (this->dataPtr->viewingTransparent.find(visualEntity) !=
-        this->dataPtr->viewingTransparent.end())
-    {
-      if (!material)
-        visual->SetMaterial("transparency_off", true);
-      else
-        material->SetTransparency(0.0);
+    if (is_transparent)
       this->dataPtr->viewingTransparent.erase(visualEntity);
-      continue;
-    }
-
-    if (!material)
-      visual->SetMaterial("transparency_on", true);
     else
-      material->SetTransparency(0.7);
-    this->dataPtr->viewingTransparent.insert(visualEntity);
+      this->dataPtr->viewingTransparent.insert(visualEntity);
   }
 }
