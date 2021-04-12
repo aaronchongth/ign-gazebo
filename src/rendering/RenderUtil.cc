@@ -34,6 +34,7 @@
 #include <sdf/SDFImpl.hh>
 #include <sdf/Visual.hh>
 
+#include <ignition/common/Material.hh>
 #include <ignition/common/Profiler.hh>
 #include <ignition/common/Skeleton.hh>
 #include <ignition/common/SkeletonAnimation.hh>
@@ -2218,15 +2219,45 @@ void RenderUtil::ViewTransparent(const Entity &_entity)
       continue;
     }
 
+    if (!this->dataPtr->scene->MaterialRegistered("transparency_on"))
+    {
+      auto material =
+        this->dataPtr->scene->CreateMaterial("transparency_on");
+      math::Color default_values(0.0f, 0.0f, 0.0f, 1.0f);
+      material->SetAmbient(default_values);
+      material->SetDiffuse(default_values);
+      material->SetSpecular(default_values);
+      material->SetEmissive(default_values);
+      material->SetTransparency(0.7);
+    }
+    if (!this->dataPtr->scene->MaterialRegistered("transparency_off"))
+    {
+      auto material =
+        this->dataPtr->scene->CreateMaterial("transparency_off");
+      math::Color default_values(0.0f, 0.0f, 0.0f, 1.0f);
+      material->SetAmbient(default_values);
+      material->SetDiffuse(default_values);
+      material->SetSpecular(default_values);
+      material->SetEmissive(default_values);
+      material->SetTransparency(0.0);
+    }
+
+    auto material = visual->Material();
     if (this->dataPtr->viewingTransparent.find(visualEntity) !=
         this->dataPtr->viewingTransparent.end())
     {
-      visual->SetVisible(true);
+      if (!material)
+        visual->SetMaterial("transparency_off", true);
+      else
+        material->SetTransparency(0.0);
       this->dataPtr->viewingTransparent.erase(visualEntity);
       continue;
     }
 
-    visual->SetVisible(false);
+    if (!material)
+      visual->SetMaterial("transparency_on", true);
+    else
+      material->SetTransparency(0.7);
     this->dataPtr->viewingTransparent.insert(visualEntity);
   }
 }
