@@ -234,6 +234,9 @@ inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     /// \brief Target to view collisions
     public: std::string viewCollisionsTarget;
 
+    /// \brief Target to view transparent
+    public: std::string viewTransparentTarget;
+
     /// \brief Helper object to select entities. Only the latest selection
     /// request is kept.
     public: SelectionHelper selectionHelper;
@@ -435,6 +438,9 @@ inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
 
     /// \brief View collisions service
     public: std::string viewCollisionsService;
+
+    /// \brief View transparent service
+    public: std::string viewTransparentService;
   };
 }
 }
@@ -831,6 +837,32 @@ void IgnRenderer::Render()
       }
 
       this->dataPtr->viewCollisionsTarget.clear();
+    }
+  }
+
+  // View transparent
+  {
+    IGN_PROFILE("IgnRenderer::Render ViewTransparent");
+    if (!this->dataPtr->viewTransparentTarget.empty())
+    {
+      rendering::NodePtr targetNode =
+          scene->NodeByName(this->dataPtr->viewTransparentTarget);
+      auto targetVis = std::dynamic_pointer_cast<rendering::Visual>(targetNode);
+
+      if (targetVis)
+      {
+        Entity targetEntity =
+            std::get<int>(targetVis->UserData("gazebo-entity"));
+        this->dataPtr->renderUtil.ViewTransparent(targetEntity);
+      }
+      else
+      {
+        ignerr << "Unable to find node name ["
+               << this->dataPtr->viewTransparentTarget
+               << "] to toggle view transparency" << std::endl;
+      }
+
+      this->dataPtr->viewTransparentTarget.clear();
     }
   }
 
@@ -1959,6 +1991,13 @@ void IgnRenderer::SetViewCollisionsTarget(const std::string &_target)
 }
 
 /////////////////////////////////////////////////
+void IgnRenderer::SetViewTransparentTarget(const std::string &_target)
+{
+  std::lock_guard<std::mutex> lock(this->dataPtr->mutex);
+  this->dataPtr->viewTransparentTarget = _target;
+}
+
+/////////////////////////////////////////////////
 void IgnRenderer::SetFollowPGain(double _gain)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->mutex);
@@ -2670,6 +2709,13 @@ void Scene3D::LoadConfig(const tinyxml2::XMLElement *_pluginElem)
   ignmsg << "View collisions service on ["
          << this->dataPtr->viewCollisionsService << "]" << std::endl;
 
+  // view transparent service
+  this->dataPtr->viewTransparentService = "/gui/view/transparent";
+  this->dataPtr->node.Advertise(this->dataPtr->viewTransparentService,
+      &Scene3D::OnViewTransparent, this);
+  ignmsg << "View transparent service on ["
+         << this->dataPtr->viewTransparentService << "]" << std::endl;
+
   ignition::gui::App()->findChild<
       ignition::gui::MainWindow *>()->QuickWindow()->installEventFilter(this);
   ignition::gui::App()->findChild<
@@ -2830,6 +2876,17 @@ bool Scene3D::OnViewCollisions(const msgs::StringMsg &_msg,
 
   renderWindow->SetViewCollisionsTarget(_msg.data());
 
+  _res.set_data(true);
+  return true;
+}
+
+/////////////////////////////////////////////////
+bool Scene3D::OnViewTransparent(const msgs::StringMsg &_msg,
+  msgs::Boolean &_res)
+{
+  auto renderWindow = this->PluginItem()->findChild<RenderWindowItem *>();
+
+  renderWindow->SetViewTransparentTarget(_msg.data());
   _res.set_data(true);
   return true;
 }
@@ -3093,6 +3150,12 @@ void RenderWindowItem::SetMoveToPose(const math::Pose3d &_pose)
 void RenderWindowItem::SetViewCollisionsTarget(const std::string &_target)
 {
   this->dataPtr->renderThread->ignRenderer.SetViewCollisionsTarget(_target);
+}
+
+/////////////////////////////////////////////////
+void RenderWindowItem::SetViewTransparentTarget(const std::string &_target)
+{
+  this->dataPtr->renderThread->ignRenderer.SetViewTransparentTarget(_target);
 }
 
 /////////////////////////////////////////////////

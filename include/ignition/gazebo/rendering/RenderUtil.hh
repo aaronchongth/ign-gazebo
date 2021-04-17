@@ -114,6 +114,10 @@ inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     /// \param[in] _entity Entity to view collisions
     public: void ViewCollisions(const Entity &_entity);
 
+    /// \brief Toggle view transparency of specified entity
+    /// \param[in] _entity Entity to toggle view transparency
+    public: void ViewTransparent(const Entity &_entity);
+
     /// \brief Get the scene manager
     /// Returns reference to the scene manager.
     public: class SceneManager &SceneManager();
